@@ -1,0 +1,11 @@
+streamlit
+pandas
+numpy
+plotly
+langchain
+langchain-groq
+langgraph
+python-dotenv
+kaleido
+reportlab
+matplotlib
