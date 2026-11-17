@@ -1,3 +1,4 @@
+
 import io
 import re
 from typing import Any
@@ -13,13 +14,14 @@ from utils.data_summary import generate_dataset_summary
 
 app = FastAPI(title="AI Business Intelligence API")
 
+# CORS configuration for local development and Vercel deployment
 app.add_middleware(
     CORSMiddleware,
-   allow_origins=[
-    "http://localhost:3000",
-    "http://127.0.0.1:8000",
-    "https://*.vercel.app",
-],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:8000",
+    ],
+    allow_origin_regex=r"^https://.*\.vercel\.app$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -497,7 +499,6 @@ def ask_question(request: QuestionRequest):
         if not isinstance(result, dict):
             raise ValueError("Unexpected response from the AI workflow.")
 
-        # Match the actual keys returned by graph/workflow.py
         analysis = result.get(
             "analysis_result",
             result.get("analysis", result.get("data_analysis", ""))
