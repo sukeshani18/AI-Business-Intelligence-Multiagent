@@ -78,7 +78,7 @@ flowchart TD
 The following screenshots demonstrate the application's interface.
 
 ### Dashboard Overview
-![Dashboard Overview](Dashboard-overview.png)
+![Dashboard Overview](Dashboard_overview.png)
 
 ### Business Analytics
 ![Business Analytics](business-analysis.png)
