@@ -115,9 +115,6 @@ Never commit API keys or environment files to GitHub.
 uvicorn api:app --reload --port 8000
 ```
 
-Backend API documentation:
-http://127.0.0.1:8000/docs
-
 ### 5. Start the frontend
 Open another terminal:
 ```bash
@@ -125,9 +122,6 @@ cd frontend
 npm install
 npm run dev
 ```
-
-Open:
-http://localhost:3000
 
 ## Example Business Questions
 - Which customers contribute the most to total sales?
