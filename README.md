@@ -35,13 +35,13 @@ The application uses LangGraph to coordinate the analysis workflow.
 
 ## Dashboard Preview
 ### Dashboard Overview
-![Dashboard Overview](screenshots/dashboard-overview.png)
+![Dashboard Overview](Dashboard_overview.png)
 
 ### Business Analytics
-![Business Analytics](screenshots/business-analytics.png)
+![Business Analytics](business-analysis.png)
 
 ### AI Business Insights
-![AI Business Insights](screenshots/ai-business-insights.png)
+![AI Business Insights](ai-business-insights.png)
 
 ## Project Structure
 ```text
