@@ -33,14 +33,12 @@ class QuestionRequest(BaseModel):
 
 
 def clean_name(name: str) -> str:
-    """Convert a column name into a readable label."""
     name = re.sub(r"([a-z])([A-Z])", r"\1 \2", str(name))
     name = name.replace("_", " ").replace("-", " ")
     return " ".join(name.split()).title()
 
 
 def safe_value(value: Any):
-    """Convert pandas/numpy values into JSON-safe Python values."""
     if value is None:
         return None
 
@@ -56,7 +54,7 @@ def safe_value(value: Any):
         except (ValueError, TypeError):
             pass
 
-    if isinstance(value, (pd.Timestamp,)):
+    if isinstance(value, pd.Timestamp):
         return value.isoformat()
 
     return value
@@ -71,7 +69,6 @@ def safe_records(df: pd.DataFrame):
 
 
 def find_column(columns, keywords):
-    """Find a column using business-related keywords."""
     for keyword in keywords:
         for column in columns:
             normalized = re.sub(
@@ -83,7 +80,6 @@ def find_column(columns, keywords):
 
 
 def detect_date_column(df: pd.DataFrame):
-    """Return a date column only when enough values parse as dates."""
     preferred = []
 
     for column in df.columns:
@@ -127,7 +123,6 @@ def get_numeric_columns(df: pd.DataFrame):
 
 
 def get_category_column(df: pd.DataFrame):
-    """Choose a useful business category rather than an arbitrary column."""
     preferred_keywords = [
         "category", "product", "region", "city", "segment",
         "department", "channel", "store", "customer", "country",
@@ -154,7 +149,6 @@ def get_category_column(df: pd.DataFrame):
 
 
 def get_main_metric(df: pd.DataFrame):
-    """Choose the most meaningful numerical business metric."""
     numeric_columns = get_numeric_columns(df)
 
     metric_keywords = [
@@ -172,7 +166,6 @@ def get_main_metric(df: pd.DataFrame):
 
 
 def make_kpis(df: pd.DataFrame):
-    """Create business KPIs only when their underlying data exists."""
     kpis = []
 
     revenue_col = find_column(
@@ -215,20 +208,16 @@ def make_kpis(df: pd.DataFrame):
     add_kpi("Total Records", len(df))
 
     if revenue_col:
-        total_revenue = df[revenue_col].sum()
-        add_kpi("Total Revenue", total_revenue, "currency")
+        add_kpi("Total Revenue", df[revenue_col].sum(), "currency")
 
     if profit_col:
-        total_profit = df[profit_col].sum()
-        add_kpi("Total Profit", total_profit, "currency")
+        add_kpi("Total Profit", df[profit_col].sum(), "currency")
 
     if order_col:
-        total_orders = df[order_col].nunique()
-        add_kpi("Total Orders", total_orders)
+        add_kpi("Total Orders", df[order_col].nunique())
 
     if customer_col:
-        total_customers = df[customer_col].nunique()
-        add_kpi("Unique Customers", total_customers)
+        add_kpi("Unique Customers", df[customer_col].nunique())
 
     if revenue_col and order_col:
         order_count = df[order_col].nunique()
@@ -239,8 +228,6 @@ def make_kpis(df: pd.DataFrame):
                 "currency"
             )
 
-    # If the dataset does not contain standard sales metrics,
-    # show a useful total from its primary numerical column.
     if len(kpis) == 1:
         metric_col = get_main_metric(df)
         if metric_col:
@@ -258,9 +245,8 @@ def make_bar_chart(df, category_col, metric_col):
         return None
 
     working = df[[category_col]].copy()
-    working["_metric"] = (
-        df[metric_col] if metric_col else 1
-    )
+    working["_metric"] = df[metric_col] if metric_col else 1
+
     working[category_col] = (
         working[category_col].fillna("Unknown").astype(str)
     )
@@ -359,11 +345,10 @@ def make_histogram(df, metric_col):
 
     grouped = counts.value_counts(sort=False)
 
-    labels = []
-    for interval in grouped.index:
-        labels.append(
-            f"{interval.left:,.1f} – {interval.right:,.1f}"
-        )
+    labels = [
+        f"{interval.left:,.1f} – {interval.right:,.1f}"
+        for interval in grouped.index
+    ]
 
     return {
         "type": "histogram",
@@ -376,19 +361,12 @@ def make_histogram(df, metric_col):
 
 
 def generate_analytics(df: pd.DataFrame):
-    numeric_columns = get_numeric_columns(df)
-
-    categorical_columns = df.select_dtypes(
-        include=["object", "category", "bool"]
-    ).columns.tolist()
-
     date_col, parsed_dates = detect_date_column(df)
     metric_col = get_main_metric(df)
     category_col = get_category_column(df)
 
     charts = []
 
-    # A line chart is generated only when valid date data exists.
     line_chart = make_line_chart(
         df, date_col, parsed_dates, metric_col
     )
@@ -426,7 +404,7 @@ def home():
 async def upload_file(file: UploadFile = File(...)):
     global uploaded_df
 
-    if not file.filename.lower().endswith(".csv"):
+    if not file.filename or not file.filename.lower().endswith(".csv"):
         raise HTTPException(
             status_code=400,
             detail="Please upload a CSV file."
@@ -513,25 +491,58 @@ def ask_question(request: QuestionRequest):
     try:
         result = business_workflow.invoke({
             "df": uploaded_df,
-            "user_question": request.question,
+            "user_question": request.question.strip(),
         })
 
         if not isinstance(result, dict):
             raise ValueError("Unexpected response from the AI workflow.")
 
+        # Match the actual keys returned by graph/workflow.py
+        analysis = result.get(
+            "analysis_result",
+            result.get("analysis", result.get("data_analysis", ""))
+        )
+
+        insights = result.get(
+            "business_insights",
+            result.get("insights", "")
+        )
+
+        if not analysis or not str(analysis).strip():
+            raise RuntimeError(
+                "The Data Analyst did not return a response."
+            )
+
+        if not insights or not str(insights).strip():
+            insights = "The Business Analyst did not return any insights."
+
         return {
-            "analysis": result.get(
-                "analysis",
-                result.get("data_analysis", "")
-            ),
-            "insights": result.get(
-                "insights",
-                result.get("business_insights", "")
-            ),
+            "analysis": str(analysis),
+            "insights": str(insights),
         }
 
+    except HTTPException:
+        raise
+
     except Exception as exc:
+        error_message = str(exc)
+        error_lower = error_message.lower()
+
+        if (
+            "413" in error_message
+            or "request too large" in error_lower
+            or "payload too large" in error_lower
+            or "content too large" in error_lower
+        ):
+            raise HTTPException(
+                status_code=413,
+                detail=(
+                    "The AI request is too large. "
+                    "Try a shorter question or a smaller dataset."
+                )
+            )
+
         raise HTTPException(
-            status_code=500,
-            detail=f"AI analysis failed: {str(exc)}"
+            status_code=502,
+            detail=f"AI analysis failed: {error_message}"
         )

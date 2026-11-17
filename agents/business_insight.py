@@ -2,64 +2,62 @@
 from utils.llm_client import get_llm
 
 
+MAX_SUMMARY_CHARS = 5000
+MAX_ANALYSIS_CHARS = 6000
+
+
+def _response_text(response):
+    content = getattr(response, "content", response)
+
+    if isinstance(content, str):
+        return content
+
+    return str(content)
+
+
 def generate_business_insights(dataset_summary, analysis_result):
 
-    try:
+    summary = str(dataset_summary or "")[:MAX_SUMMARY_CHARS]
+    analysis = str(analysis_result or "")[:MAX_ANALYSIS_CHARS]
 
-        llm = get_llm()
+    if not analysis.strip():
+        return (
+            "Business insights could not be generated "
+            "because the Data Analyst returned no findings."
+        )
 
-        prompt = f"""
-You are an experienced Business Strategy Consultant.
+    prompt = f"""
+You are a professional Business Analyst.
 
-Your task is to convert data analysis findings into
-practical business insights.
+Analyze the dataset summary and Data Analyst findings.
 
-DATASET INFORMATION:
-{dataset_summary}
+DATASET SUMMARY:
+{summary}
 
 DATA ANALYST FINDINGS:
-{analysis_result}
+{analysis}
 
-YOUR TASK:
+Provide concise, practical business insights using these sections:
 
-1. BUSINESS INTERPRETATION
-   Explain what the findings mean for the business.
+1. Key Business Findings
+2. Important Trends
+3. Business Opportunities
+4. Risks or Areas of Concern
+5. Actionable Recommendations
 
-2. RISKS AND OPPORTUNITIES
-   Identify important risks and potential opportunities
-   supported by the available findings.
-
-3. RECOMMENDED STRATEGIES
-   Suggest 3 practical business strategies.
-
-4. EXPECTED BENEFITS
-   Explain how each strategy may help the business.
-
-INSTRUCTIONS:
-
-- Use simple and professional English.
-- Base recommendations on the supplied findings.
-- Never invent statistics or business facts.
-- Clearly distinguish facts from suggestions.
-- Avoid generic recommendations.
-- Do not repeat the entire data analysis.
-- Keep the response concise and actionable.
-
-FORMAT:
-
-### Business Interpretation
-
-### Risks and Opportunities
-
-### Recommended Strategies
-
-### Expected Benefits
+Rules:
+- Use only the information provided.
+- Do not invent numbers or findings.
+- Keep recommendations practical.
+- Avoid repeating the same information.
+- Use clear and simple business language.
 """
 
-        response = llm.invoke(prompt)
+    try:
+        response = get_llm().invoke(prompt)
+        return _response_text(response)
 
-        return response.content
-
-    except Exception as e:
-
-        return f"Unable to generate business insights: {str(e)}"
+    except Exception as exc:
+        raise RuntimeError(
+            f"Business Analyst LLM request failed: {exc}"
+        ) from exc
